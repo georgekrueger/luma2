@@ -1,0 +1,33 @@
+﻿Build started 11/13/2011 6:12:07 PM.
+     1>Project "C:\Documents and Settings\George\My Documents\luma2\build\minihost.vcxproj" on node 2 (build target(s)).
+     1>InitializeBuildStatus:
+         Creating ".\Debug/minihost\minihost.unsuccessfulbuild" because "AlwaysCreate" was specified.
+       ClCompile:
+         C:\Program Files\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /I../../vstsdk2.4 /I../../portaudio/include /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /D _VC80_UPGRADE=0x0600 /D _MBCS /Gm /EHsc /RTC1 /MTd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo".\Debug/minihost/" /Fd".\Debug/minihost/vc100.pdb" /FR".\Debug/minihost\\" /Gd /TP /analyze- /errorReport:prompt ..\minihost.cpp
+         minihost.cpp
+     1>c:\documents and settings\george\my documents\vstsdk2.4\pluginterfaces\vst2.x\aeffect.h(296): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files\microsoft visual studio 10.0\vc\include\string.h(188) : see declaration of 'strncpy'
+     1>c:\documents and settings\george\my documents\vstsdk2.4\pluginterfaces\vst2.x\aeffect.h(306): warning C4996: 'strncat': This function or variable may be unsafe. Consider using strncat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files\microsoft visual studio 10.0\vc\include\string.h(175) : see declaration of 'strncat'
+       ManifestResourceCompile:
+         All outputs are up-to-date.
+       Link:
+         C:\Program Files\Microsoft Visual Studio 10.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:".\Debug/minihost.exe" /INCREMENTAL /NOLOGO ../../portaudio/build/msvc/Win32/Release/portaudio_x86.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /ManifestFile:".\Debug/minihost\minihost.exe.intermediate.manifest" /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /DEBUG /PDB:".\Debug/minihost.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE:NO /IMPLIB:".\Debug\minihost.lib" /MACHINE:X86 .\Debug/minihost\minihost.exe.embed.manifest.res
+         .\Debug/minihost/minieditor.obj
+         .\Debug/minihost/minihost.obj
+       Manifest:
+         C:\Program Files\Microsoft SDKs\Windows\v7.0A\bin\mt.exe /nologo /verbose /out:".\Debug/minihost\minihost.exe.embed.manifest" /manifest .\Debug/minihost\minihost.exe.intermediate.manifest
+         All outputs are up-to-date.
+       LinkEmbedManifest:
+         All outputs are up-to-date.
+         minihost.vcxproj -> C:\Documents and Settings\George\My Documents\luma2\build\.\Debug\minihost.exe
+       BscMake:
+         C:\Program Files\Microsoft Visual Studio 10.0\VC\bin\bscmake.exe /nologo /o".\Debug/minihost.bsc" .\Debug/minihost\minieditor.sbr .\Debug/minihost\minihost.sbr
+       FinalizeBuildStatus:
+         Deleting file ".\Debug/minihost\minihost.unsuccessfulbuild".
+         Touching ".\Debug/minihost\minihost.lastbuildstate".
+     1>Done Building Project "C:\Documents and Settings\George\My Documents\luma2\build\minihost.vcxproj" (build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:02.62
