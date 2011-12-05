@@ -2,24 +2,30 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Interfaces">
-      <UniqueIdentifier>{a76556c6-9349-40d9-a732-3762a13ec005}</UniqueIdentifier>
+      <UniqueIdentifier>{c3d109e3-ef6d-41e4-973e-4174818aaf43}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files">
-      <UniqueIdentifier>{571ea262-fbec-4e3f-a2d9-752a16ceed62}</UniqueIdentifier>
+      <UniqueIdentifier>{b029f56f-79c4-463a-b7db-8ecf360b6462}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\portaudio\include\portaudio.h">
-      <Filter>Interfaces</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\vstsdk2.4\pluginterfaces\vst2.x\aeffectx.h">
+    <ClInclude Include="..\..\vstsdk2.4\pluginterfaces\vst2.x\vstfxstore.h">
       <Filter>Interfaces</Filter>
     </ClInclude>
     <ClInclude Include="..\..\vstsdk2.4\pluginterfaces\vst2.x\aeffect.h">
       <Filter>Interfaces</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\vstsdk2.4\pluginterfaces\vst2.x\vstfxstore.h">
+    <ClInclude Include="..\..\vstsdk2.4\pluginterfaces\vst2.x\aeffectx.h">
       <Filter>Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="..\luma.y">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\music.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lumagrammar.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

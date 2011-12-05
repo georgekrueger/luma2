@@ -21,6 +21,7 @@
 
 #include <stdio.h>
 #include <iostream>
+#include "lumagrammar.h"
 
 using namespace std;
 
@@ -307,6 +308,12 @@ int main (int argc, char* argv[])
 		printf ("Platform verification failed! Please check your Compiler Settings!\n");
 		return -1;
 	}
+
+	// parse input file
+	init_table();
+	is.open("C:\\Documents and Settings\\George\\My Documents\\luma2\\input.txt", ifstream::in);
+	int ret = yyparse();
+	is.close();
 
 	const char* fileName = "C:\\Program Files\\VSTPlugins\\Circle.dll";
 
