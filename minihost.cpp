@@ -22,6 +22,12 @@
 #include <stdio.h>
 #include <iostream>
 #include "lumagrammar.h"
+#include "music.h"
+
+extern Song song;
+
+vector<Event> events;
+vector<int> offsets;
 
 using namespace std;
 
@@ -99,6 +105,12 @@ static int portaudioCallback( const void *inputBuffer, void *outputBuffer,
                             void *userData )
 {
     (void) inputBuffer; /* Prevent "unused variable" warnings. */
+
+	song.Update((AUDIO_SAMPLE_RATE / framesPerBuffer) * 1000, events, offsets);
+
+	for (int i=0; i<events.size(); i++) {
+		
+	}
 
 	static int counter = 0;
 	static bool on = false;
@@ -308,6 +320,9 @@ int main (int argc, char* argv[])
 		printf ("Platform verification failed! Please check your Compiler Settings!\n");
 		return -1;
 	}
+
+	events.reserve(100);
+	offsets.reserve(100);
 
 	// parse input file
 	init_table();

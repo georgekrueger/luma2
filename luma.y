@@ -33,6 +33,8 @@ extern symrec *sym_table;
 symrec *putsym (char const *, int);
 symrec *getsym (char const *);
 
+Song song;
+
 %}
 
 %union {
@@ -136,12 +138,14 @@ pattern:
 	{
 		$$ = $2;
 		$2->SetRepeatCount(1);
+		song.AddPattern($2);
 		$2->Print();
 	} |
 	'[' patseq ']' '#' NUM
 	{
 		$$ = $2;
 		$2->SetRepeatCount($5);
+		song.AddPattern($2);
 		$2->Print();
 	}
 ;

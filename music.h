@@ -4,6 +4,7 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <map>
 using namespace std;
 
 ///////////////////////////
@@ -42,10 +43,11 @@ public:
 	~Note() {}
 
 	short GetLength() { return length_; }
-	//short GetPitch() { return pitch_; }
+	short GetPitch() { return pitch_; }
 	short GetVelocity() { return velocity_; }
 	
 	void SetRest(bool b) { isRest_ = b; }
+	bool IsRest() { return isRest_; }
 
 	void Print()
 	{
@@ -70,7 +72,11 @@ private:
 class Event
 {
 public:
-	enum { NOTE } type;
+	enum Type
+	{ 
+		NOTE 
+	};
+	Type type;
 	Note* note;
 
 	void Print()
@@ -150,27 +156,52 @@ private:
 class Song
 {
 public:
-	void AddPattern(Pattern* p, int repeat)
+	Song() {}
+
+	void AddPattern(Pattern* p)
 	{
-		SongPattern sp(p, repeat);
+		SongPattern sp(p);
 		patterns_.push_back(sp);
 	}
 
-	void Update(int elapsedTime, vector<Event> events, vector<int> offsets)
+	void Update(int elapsedTime, vector<Event>& events, vector<int>& offsets)
 	{
 		int numPatterns = patterns_.size();
 		for (int i=0; i<numPatterns; i++) {
 			SongPattern* sp = &patterns_[i];
-			int time = 0;
-			while (sp->repeat_ > 0) {
+			int timeUsed = sp->offset_;
+			while (timeUsed < elapsedTime && sp->pattern_->GetRepeatCount() > 0) {
 				if (sp->pos_ >= sp->pattern_->GetNumEvents()) {
-					sp->repeat_--;
+					sp->pattern_->SetRepeatCount(sp->pattern_->GetRepeatCount() - 1);
 					continue;
 				}
 
 				Event* e = sp->pattern_->GetEvent(sp->pos_);
-				
-				
+				switch(e->type) 
+				{
+				case NOTE:
+					Note* note = e->note;
+					if (e->note->IsRest())
+					{
+						timeUsed += note->GetLength();
+						if (timeUsed > elapsedTime) {
+							sp->offset_ = timeUsed - elapsedTime;
+						}
+						else {
+							sp->pos_++;
+						}
+					}
+					else {
+						events.push_back(*e);
+						map<short, Note*>::iterator activeNote = activeNotes_.find(note->GetPitch());
+						if (activeNote != activeNotes_.end()) {
+							// stop note
+						}
+						activeNotes_[note->GetPitch()] = note;
+						offsets.push_back(timeUsed);
+						sp->pos_++;
+					}
+				}
 			}
 		}
 	}
@@ -179,15 +210,13 @@ private:
 	class SongPattern
 	{
 	public:
-		SongPattern(Pattern* pattern, int repeat) : pos_(0), offset_(0), pattern_(pattern), repeat_(repeat) {}
+		SongPattern(Pattern* pattern) : pos_(0), offset_(0), pattern_(pattern) {}
 
-		int pos_;
-		int offset_;
+		unsigned int pos_;
+		unsigned int offset_;
 		Pattern* pattern_;
-		int repeat_;
 	};
 	vector<SongPattern> patterns_;
-	vector<Note*> activeNotes_;
-};
+	map<short, Note*> activeNotes_;
 
 #endif
