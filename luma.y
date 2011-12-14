@@ -251,7 +251,7 @@ void init_table (void)
 	symrec *ptr;
 	for (i = 0; i < NumScales; i++)
 	{
-		ptr = putsym (ScaleNames[i], SCALE);
+		ptr = putsym (scaleInfo[i].Name, SCALE);
 		ptr->value.scale = (Scale)i;
 	}
 }

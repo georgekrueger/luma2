@@ -106,12 +106,6 @@ static int portaudioCallback( const void *inputBuffer, void *outputBuffer,
 {
     (void) inputBuffer; /* Prevent "unused variable" warnings. */
 
-	song.Update((AUDIO_SAMPLE_RATE / framesPerBuffer) * 1000, events, offsets);
-
-	for (int i=0; i<events.size(); i++) {
-		
-	}
-
 	static int counter = 0;
 	static bool on = false;
 	counter += framesPerBuffer;
@@ -329,6 +323,18 @@ int main (int argc, char* argv[])
 	is.open("C:\\Documents and Settings\\George\\My Documents\\luma2\\input.txt", ifstream::in);
 	int ret = yyparse();
 	is.close();
+
+	// test song class
+	vector<Event> events; 
+	vector<int> offsets;
+	for (int i=0; i<30; i++) {
+		cout << "--- 500 ms ---" << endl;
+		song.Update(500, events, offsets);
+		for (int j=0; j<events.size(); j++) {
+			Event* e = &events[i];
+			cout << "Pitch: " << e->note->GetPitch() << " at offset: " << offsets[i] << endl;
+		}
+	}
 
 	const char* fileName = "C:\\Program Files\\VSTPlugins\\Circle.dll";
 
