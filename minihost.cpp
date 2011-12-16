@@ -306,54 +306,23 @@ void Cleanup()
 	delete vstEvents;
 }
 
-//-------------------------------------------------------------------------------------------------------
-int main (int argc, char* argv[])
+bool LoadPlugin()
 {
-	if (!checkPlatform ())
-	{
-		printf ("Platform verification failed! Please check your Compiler Settings!\n");
-		return -1;
-	}
-
-	events.reserve(100);
-	offsets.reserve(100);
-
-	// parse input file
-	init_table();
-	is.open("C:\\Documents and Settings\\George\\My Documents\\luma2\\input.txt", ifstream::in);
-	int ret = yyparse();
-	is.close();
-
-	// test song class
-	vector<Event> events; 
-	vector<int> offsets;
-	for (int i=0; i<30; i++) {
-		cout << "--- 500 ms ---" << endl;
-		song.Update(500, events, offsets);
-		for (int j=0; j<events.size(); j++) {
-			Event* e = &events[i];
-			cout << "Pitch: " << e->note->GetPitch() << " at offset: " << offsets[i] << endl;
-		}
-	}
-
 	const char* fileName = "C:\\Program Files\\VSTPlugins\\Circle.dll";
-
-	if (argc > 1)
-		fileName = argv[1];
 
 	printf ("HOST> Load library...\n");
 	PluginLoader loader;
 	if (!loader.loadLibrary (fileName))
 	{
 		printf ("Failed to load VST Plugin library!\n");
-		return -1;
+		return false;
 	}
 
 	PluginEntryProc mainEntry = loader.getMainEntry ();
 	if (!mainEntry)
 	{
 		printf ("VST Plugin main entry not found!\n");
-		return -1;
+		return false;
 	}
 
 	printf ("HOST> Create effect...\n");
@@ -361,13 +330,13 @@ int main (int argc, char* argv[])
 	if (!effect)
 	{
 		printf ("Failed to create effect instance!\n");
-		return -1;
+		return false;
 	}
 
 	if (effect->numOutputs > VST_MAX_OUTPUT_CHANNELS_SUPPORTED) {
 		printf("Plugin has more outputs than are supported by this host. Max outputs support is: %d\n", effect->numOutputs);
 		Cleanup();
-		return 1;
+		return false;
 	}
 
 	int nHdrLen = sizeof(VstEvents) + (100 * sizeof(VstMidiEvent *));
@@ -393,13 +362,53 @@ int main (int argc, char* argv[])
 	if (!StartAudio()) {
 		cout << "Failed to start audio" << endl;
 		Cleanup(); 
-		return 0;
+		return false;
 	}
 
 	//checkEffectProcessing (effect);
 	checkEffectEditor (effect);
 
 	Cleanup();
+
+	return true;
+}
+
+//-------------------------------------------------------------------------------------------------------
+int main (int argc, char* argv[])
+{
+	if (!checkPlatform ())
+	{
+		printf ("Platform verification failed! Please check your Compiler Settings!\n");
+		return -1;
+	}
+
+	events.reserve(100);
+	offsets.reserve(100);
+
+	// parse input file
+	init_table();
+	is.open("C:\\Documents and Settings\\George\\My Documents\\luma2\\input.txt", ifstream::in);
+	int ret = yyparse();
+	is.close();
+
+	cout << endl;
+
+	// test song class
+	vector<Event> events; 
+	vector<int> offsets;
+	for (int i=0; i<30; i++) {
+		cout << "--- 500 ms ---" << endl;
+		song.Update(500, events, offsets);
+		for (int j=0; j<events.size(); j++) {
+			Event* e = &events[j];
+			e->Print();
+			cout << endl;
+		}
+		events.clear();
+		offsets.clear();
+	}
+	
+	LoadPlugin();
 
 	return 0;
 }

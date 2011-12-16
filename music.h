@@ -7,6 +7,8 @@
 #include <map>
 using namespace std;
 
+float BPM = 120;
+
 ///////////////////////////
 // Scales
 ///////////////////////////
@@ -42,7 +44,7 @@ unsigned short GetMidiPitch(Scale scale, int octave, int degree)
 {
 	const ScaleInfo* info = &scaleInfo[scale];
 	short startMidiPitch = info->startMidiPitch;
-	short midiPitch = startMidiPitch * octave;
+	short midiPitch = 12 * octave + startMidiPitch;
 	if (degree >= 1 && degree <= info->numIntervals) {
 		midiPitch += info->intervals[degree-1];
 	}
@@ -62,6 +64,11 @@ public:
 	~Note() {}
 
 	short GetLength() { return length_; }
+	unsigned long GetLengthInMs()
+	{
+		float BeatLength = 1 / BPM * 60000;
+		return (BeatLength * length_);
+	}
 	short GetPitch() { return GetMidiPitch(scale_, octave_, degree_); }
 	short GetVelocity() { return velocity_; }
 	
@@ -76,6 +83,10 @@ public:
 			cout << "rest " << length_;
 		}
 		else {
+			if (on_)
+				cout << "Note ON ";
+			else
+				cout << "Note OFF ";
 			cout << GetScaleName(scale_) << " " << octave_ << " " << degree_
 				 << " " << velocity_ << " " << length_;
 		}
@@ -101,13 +112,13 @@ public:
 	Type type;
 	Note* note;
 
-	Event& Event::operator=(const Event &rhs) {
-		// Only do assignment if RHS is a different object from this.
-		if (this != &rhs) {
-			this->type = rhs.type;
-			this->note = new Note(*rhs.note);
-		}
-		return *this;
+	Event::Event() : type(NOTE), note(NULL)
+	{
+	}
+
+	Event::Event(const Event &rhs) {
+		type = rhs.type;
+		note = new Note(*rhs.note);
 	}
 
 	void Print()
@@ -115,7 +126,7 @@ public:
 		switch(type)
 		{
 		case NOTE:
-			note->Print();
+			note->Print();	
 			break;
 		}
 	}
@@ -200,11 +211,27 @@ public:
 		int numPatterns = patterns_.size();
 		for (int i=0; i<numPatterns; i++) {
 			SongPattern* sp = &patterns_[i];
-			int timeUsed = sp->offset_;
+			int timeUsed = 0;
 			while (timeUsed < elapsedTime && sp->pattern_->GetRepeatCount() > 0) {
 				if (sp->pos_ >= sp->pattern_->GetNumEvents()) {
 					sp->pattern_->SetRepeatCount(sp->pattern_->GetRepeatCount() - 1);
+					sp->pos_ = 0;
 					continue;
+				}
+
+				// if there is left over time from an already encountered rest,
+				// then consume it.
+				if (sp->leftover_ > 0) {
+					if (timeUsed + sp->leftover_ > elapsedTime) {
+						sp->leftover_ = sp->leftover_ - (elapsedTime - timeUsed);
+						break;
+					}
+					else {
+						timeUsed += sp->leftover_;
+						sp->leftover_ = 0;
+						sp->pos_++;
+						continue;
+					}
 				}
 
 				Event* e = sp->pattern_->GetEvent(sp->pos_);
@@ -215,19 +242,24 @@ public:
 						Note* note = e->note;
 						if (e->note->IsRest())
 						{
-							timeUsed += note->GetLength();
-							if (timeUsed > elapsedTime) {
-								sp->offset_ = timeUsed - elapsedTime;
+							// rest event
+							unsigned long noteLength = note->GetLengthInMs();
+							if (timeUsed + noteLength > elapsedTime) {
+								sp->leftover_ = noteLength - (elapsedTime - timeUsed);
+								timeUsed = elapsedTime;
 							}
 							else {
+								timeUsed += noteLength;
 								sp->pos_++;
 							}
 						}
 						else {
+							// note on event
 							map<short, Note*>::iterator activeNote = activeNotes_.find(note->GetPitch());
+							// search for an active note at this pitch
 							if (activeNote != activeNotes_.end()) {
 								// stop note
-								Event noteOffEvent = *e;
+								Event noteOffEvent(*e);
 								noteOffEvent.note->SetNoteOff();
 								events.push_back(noteOffEvent);
 								offsets.push_back(timeUsed);
@@ -249,10 +281,10 @@ private:
 	class SongPattern
 	{
 	public:
-		SongPattern(Pattern* pattern) : pos_(0), offset_(0), pattern_(pattern) {}
+		SongPattern(Pattern* pattern) : pos_(0), leftover_(0), pattern_(pattern) {}
 
 		unsigned int pos_;
-		unsigned int offset_;
+		unsigned int leftover_;
 		Pattern* pattern_;
 	};
 	vector<SongPattern> patterns_;
