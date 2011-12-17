@@ -61,10 +61,11 @@ public:
 	}
 
 	Note(int length) : length_(length), isRest_(true) {}
+	Note() : on_(false) {}
 	~Note() {}
 
 	short GetLength() { return length_; }
-	unsigned long GetLengthInMs()
+	float GetLengthInMs()
 	{
 		float BeatLength = 1 / BPM * 60000;
 		return (BeatLength * length_);
@@ -76,6 +77,7 @@ public:
 	bool IsRest() { return isRest_; }
 
 	void SetNoteOff() { on_ = false; }
+	bool IsNoteOff() { return !on_; }
 
 	void Print()
 	{
@@ -206,12 +208,13 @@ public:
 		patterns_.push_back(sp);
 	}
 
-	void Update(int elapsedTime, vector<Event>& events, vector<int>& offsets)
+	void Update(float elapsedTime, vector<Event>& events, vector<float>& offsets)
 	{
-		int numPatterns = patterns_.size();
+		// now go through the patterns and update
+		size_t numPatterns = patterns_.size();
 		for (int i=0; i<numPatterns; i++) {
 			SongPattern* sp = &patterns_[i];
-			int timeUsed = 0;
+			float timeUsed = 0;
 			while (timeUsed < elapsedTime && sp->pattern_->GetRepeatCount() > 0) {
 				if (sp->pos_ >= sp->pattern_->GetNumEvents()) {
 					sp->pattern_->SetRepeatCount(sp->pattern_->GetRepeatCount() - 1);
@@ -219,76 +222,121 @@ public:
 					continue;
 				}
 
+				float timeUsedThisIteration = 0;
+
 				// if there is left over time from an already encountered rest,
 				// then consume it.
-				if (sp->leftover_ > 0) {
+				if (sp->leftover_ > 0) 
+				{
 					if (timeUsed + sp->leftover_ > elapsedTime) {
-						sp->leftover_ = sp->leftover_ - (elapsedTime - timeUsed);
-						break;
+						unsigned long timeLeftInFrame = elapsedTime - timeUsed;
+						sp->leftover_ -= timeLeftInFrame;
+						timeUsed = elapsedTime;
+						timeUsedThisIteration = timeLeftInFrame;
 					}
 					else {
 						timeUsed += sp->leftover_;
+						timeUsedThisIteration = sp->leftover_;
 						sp->leftover_ = 0;
 						sp->pos_++;
-						continue;
 					}
 				}
-
-				Event* e = sp->pattern_->GetEvent(sp->pos_);
-				switch(e->type) 
+				else
 				{
-					case Event::NOTE:
+					Event* e = sp->pattern_->GetEvent(sp->pos_);
+					switch(e->type) 
 					{
-						Note* note = e->note;
-						if (e->note->IsRest())
+						case Event::NOTE:
 						{
-							// rest event
-							unsigned long noteLength = note->GetLengthInMs();
-							if (timeUsed + noteLength > elapsedTime) {
-								sp->leftover_ = noteLength - (elapsedTime - timeUsed);
-								timeUsed = elapsedTime;
+							Note* note = e->note;
+							if (e->note->IsRest())
+							{
+								// rest event
+								float noteLength = note->GetLengthInMs();
+								if (timeUsed + noteLength > elapsedTime) {
+									unsigned long timeLeftInFrame = elapsedTime - timeUsed;
+									sp->leftover_ = noteLength - timeLeftInFrame;
+									timeUsed = elapsedTime;
+									timeUsedThisIteration = timeLeftInFrame;
+								}
+								else {
+									timeUsed += noteLength;
+									timeUsedThisIteration = noteLength;
+									sp->pos_++;
+								}
 							}
 							else {
-								timeUsed += noteLength;
+								// note on event
+								map<short, ActiveNote>::iterator activeNoteIter = activeNotes_.find(note->GetPitch());
+								// search for an active note at this pitch
+								if (activeNoteIter != activeNotes_.end()) {
+									// generate note off event
+									Event noteOffEvent;
+									noteOffEvent.type = Event::NOTE;
+									noteOffEvent.note = new Note(*activeNoteIter->second.note);
+									noteOffEvent.note->SetNoteOff();
+									events.push_back(noteOffEvent);
+									offsets.push_back(timeUsed);
+								}
+								ActiveNote active;
+								active.note = note;
+								active.timeLeft = note->GetLengthInMs();
+								activeNotes_[note->GetPitch()] = active;
+								events.push_back(*e);
+								offsets.push_back(timeUsed);
 								sp->pos_++;
 							}
 						}
-						else {
-							// note on event
-							map<short, Note*>::iterator activeNote = activeNotes_.find(note->GetPitch());
-							// search for an active note at this pitch
-							if (activeNote != activeNotes_.end()) {
-								// stop note
-								Event noteOffEvent(*e);
-								noteOffEvent.note->SetNoteOff();
-								events.push_back(noteOffEvent);
-								offsets.push_back(timeUsed);
-							}
-							activeNotes_[note->GetPitch()] = note;
-							events.push_back(*e);
-							offsets.push_back(timeUsed);
-							sp->pos_++;
-						}
+						default:
+							break;
 					}
-					default:
-						break;
+				}
+
+				// update active notes
+				map<short, ActiveNote>::iterator it;
+				for (it = activeNotes_.begin(); it != activeNotes_.end(); ) {
+					ActiveNote* activeNote = &it->second;
+					if (timeUsedThisIteration > activeNote->timeLeft) {
+						// generate note off event
+						Event noteOffEvent;
+						noteOffEvent.type = Event::NOTE;
+						noteOffEvent.note = new Note(*it->second.note);
+						noteOffEvent.note->SetNoteOff();
+						events.push_back(noteOffEvent);
+						offsets.push_back(activeNote->timeLeft);
+
+						// remove active note
+						map<short, ActiveNote>::iterator removeIt = it;
+						it++;
+						activeNotes_.erase(removeIt);
+					}
+					else {
+						activeNote->timeLeft -= timeUsedThisIteration;
+						it++;
+					}
 				}
 			}
 		}
 	}
 
 private:
+
 	class SongPattern
 	{
 	public:
 		SongPattern(Pattern* pattern) : pos_(0), leftover_(0), pattern_(pattern) {}
 
 		unsigned int pos_;
-		unsigned int leftover_;
+		float leftover_;
 		Pattern* pattern_;
 	};
+	struct ActiveNote
+	{
+		Note* note;
+		float timeLeft;
+	};
 	vector<SongPattern> patterns_;
-	map<short, Note*> activeNotes_;
+	map<short, ActiveNote> activeNotes_;
 };
 
 #endif

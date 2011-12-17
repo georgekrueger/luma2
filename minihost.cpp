@@ -44,15 +44,15 @@ bool audioStarted = false;
 static const unsigned int VST_MAX_OUTPUT_CHANNELS_SUPPORTED = 2;
 static float** vstOutputBuffer = NULL;
 
-void PlayNoteOn(AEffect* effect, short pitch, short velocity, short length)
+void PlayNoteOn(AEffect* effect, float offset, short pitch, short velocity, short length)
 {
 	VstMidiEvent e;
 	e.type = kVstMidiType;
 	e.byteSize = sizeof(VstMidiEvent);
 	e.deltaFrames = 0;	///< sample frames related to the current block start sample position
 	e.flags = 0;			///< @see VstMidiEventFlags
-	e.noteLength = 0;	///< (in sample frames) of entire note, if available, else 0
-	e.noteOffset = 0;	///< offset (in sample frames) into note from note start if available, else 0
+	e.noteLength = length;	///< (in sample frames) of entire note, if available, else 0
+	e.noteOffset = offset;	///< offset (in sample frames) into note from note start if available, else 0
 	e.midiData[0] = (char)0x90;
 	e.midiData[1] = (char)pitch;
 	e.midiData[2] = (char)velocity;
@@ -69,7 +69,7 @@ void PlayNoteOn(AEffect* effect, short pitch, short velocity, short length)
 	//printf("play note on\n");
 }
 
-void PlayNoteOff(AEffect* effect, short pitch)
+void PlayNoteOff(AEffect* effect, float offset, short pitch)
 {
 	VstMidiEvent e;
 	e.type = kVstMidiType;
@@ -77,7 +77,7 @@ void PlayNoteOff(AEffect* effect, short pitch)
 	e.deltaFrames = 0;	///< sample frames related to the current block start sample position
 	e.flags = 0;			///< @see VstMidiEventFlags
 	e.noteLength = 0;	///< (in sample frames) of entire note, if available, else 0
-	e.noteOffset = 0;	///< offset (in sample frames) into note from note start if available, else 0
+	e.noteOffset = offset;	///< offset (in sample frames) into note from note start if available, else 0
 	e.midiData[0] = (char)0x80;
 	e.midiData[1] = (char)pitch;
 	e.midiData[2] = (char)0;
@@ -106,7 +106,7 @@ static int portaudioCallback( const void *inputBuffer, void *outputBuffer,
 {
     (void) inputBuffer; /* Prevent "unused variable" warnings. */
 
-	static int counter = 0;
+	/*static int counter = 0;
 	static bool on = false;
 	counter += framesPerBuffer;
 	if (counter >= 88200) {
@@ -118,7 +118,28 @@ static int portaudioCallback( const void *inputBuffer, void *outputBuffer,
 			PlayNoteOn(effect, 60, 127, 500);
 		}
 		on = !on;
+	}*/
+
+	float timeElapsedInMs = framesPerBuffer / AUDIO_SAMPLE_RATE * 1000;
+
+	vector<Event> events;
+	vector<float> offsets;
+	events.reserve(200);
+	offsets.reserve(200);
+	song.Update(timeElapsedInMs, events, offsets);
+	for (int j=0; j<events.size(); j++) {
+		Event* e = &events[j];
+		float offset = offsets[j];
+		Note* note = e->note;
+		if (note->IsNoteOff()) {
+			PlayNoteOff(effect, offset, note->GetPitch());
+		}
+		else {
+			PlayNoteOn(effect, offset, note->GetPitch(), note->GetVelocity(), note->GetLengthInMs());
+		}
 	}
+	events.clear();
+	offsets.clear();
 
 	VstInt32 numOutputs = effect->numOutputs;
 	
@@ -394,19 +415,22 @@ int main (int argc, char* argv[])
 	cout << endl;
 
 	// test song class
-	vector<Event> events; 
-	vector<int> offsets;
+	/*vector<Event> events;
+	vector<float> offsets;
+	events.reserve(200);
+	offsets.reserve(200);
 	for (int i=0; i<30; i++) {
 		cout << "--- 500 ms ---" << endl;
 		song.Update(500, events, offsets);
 		for (int j=0; j<events.size(); j++) {
 			Event* e = &events[j];
+			cout << "offset: " << offsets[j] << " ";
 			e->Print();
 			cout << endl;
 		}
 		events.clear();
 		offsets.clear();
-	}
+	}*/
 	
 	LoadPlugin();
 
