@@ -26,9 +26,6 @@
 
 extern Song song;
 
-vector<Event> events;
-vector<int> offsets;
-
 using namespace std;
 
 static const double AUDIO_SAMPLE_RATE = 44100;
@@ -94,6 +91,9 @@ void PlayNoteOff(AEffect* effect, float offset, short pitch)
 	//printf("play note off\n");
 }
 
+vector<Event> songEvents;
+vector<float> songOffsets;
+
 /* This routine will be called by the PortAudio engine when audio is needed.
 ** It may called at interrupt level on some machines so don't do anything
 ** that could mess up the system like calling malloc() or free().
@@ -106,40 +106,23 @@ static int portaudioCallback( const void *inputBuffer, void *outputBuffer,
 {
     (void) inputBuffer; /* Prevent "unused variable" warnings. */
 
-	/*static int counter = 0;
-	static bool on = false;
-	counter += framesPerBuffer;
-	if (counter >= 88200) {
-		counter -= 88200;
-		if (on) {
-			PlayNoteOff(effect, 60);
-		}
-		else {
-			PlayNoteOn(effect, 60, 127, 500);
-		}
-		on = !on;
-	}*/
-
 	float timeElapsedInMs = framesPerBuffer / AUDIO_SAMPLE_RATE * 1000;
 
-	vector<Event> events;
-	vector<float> offsets;
-	events.reserve(200);
-	offsets.reserve(200);
-	song.Update(timeElapsedInMs, events, offsets);
-	for (int j=0; j<events.size(); j++) {
-		Event* e = &events[j];
-		float offset = offsets[j];
+	song.Update(timeElapsedInMs, songEvents, songOffsets);
+	for (int j=0; j<songEvents.size(); j++) {
+		Event* e = &songEvents[j];
+		float offset = songOffsets[j];
 		Note* note = e->note;
 		if (note->IsNoteOff()) {
 			PlayNoteOff(effect, offset, note->GetPitch());
 		}
 		else {
+			cout << "Note on" << endl;
 			PlayNoteOn(effect, offset, note->GetPitch(), note->GetVelocity(), note->GetLengthInMs());
 		}
 	}
-	events.clear();
-	offsets.clear();
+	songEvents.clear();
+	songOffsets.clear();
 
 	VstInt32 numOutputs = effect->numOutputs;
 	
@@ -403,8 +386,8 @@ int main (int argc, char* argv[])
 		return -1;
 	}
 
-	events.reserve(100);
-	offsets.reserve(100);
+	songEvents.reserve(200);
+	songOffsets.reserve(200);
 
 	// parse input file
 	init_table();
@@ -414,8 +397,9 @@ int main (int argc, char* argv[])
 
 	cout << endl;
 
+	/*
 	// test song class
-	/*vector<Event> events;
+	vector<Event> events;
 	vector<float> offsets;
 	events.reserve(200);
 	offsets.reserve(200);
@@ -430,9 +414,12 @@ int main (int argc, char* argv[])
 		}
 		events.clear();
 		offsets.clear();
-	}*/
+	}
+	Sleep(60 * 1000);
+	*/
 	
 	LoadPlugin();
+	
 
 	return 0;
 }
