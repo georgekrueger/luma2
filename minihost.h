@@ -10,6 +10,9 @@
 // © 2006, Steinberg Media Technologies, All Rights Reserved
 //-------------------------------------------------------------------------------------------------------
 
+#ifndef MINIHOST_H
+#define MINIHOST_H
+
 #include "pluginterfaces/vst2.x/aeffectx.h"
 #include "portaudio.h"
 
@@ -25,6 +28,7 @@
 #include "music.h"
 
 extern Song song;
+struct PluginLoader;
 
 using namespace std;
 
@@ -37,6 +41,7 @@ PaStream *stream = NULL;
 AEffect* effect = NULL;
 VstEvents* vstEvents = NULL;
 bool audioStarted = false;
+PluginLoader* pluginLoader = NULL;
 
 static const unsigned int VST_MAX_OUTPUT_CHANNELS_SUPPORTED = 2;
 static float** vstOutputBuffer = NULL;
@@ -149,6 +154,12 @@ bool StartAudio()
 	PaStreamParameters outputParameters;
     PaError err;
     
+	// init buffer used in callback to retrieve data from plugin
+	vstOutputBuffer = new float*[VST_MAX_OUTPUT_CHANNELS_SUPPORTED];
+	for (int i=0; i<VST_MAX_OUTPUT_CHANNELS_SUPPORTED; i++) {
+		vstOutputBuffer[i] = new float[AUDIO_FRAMES_PER_BUFFER];
+	}
+
 	err = Pa_Initialize();
 	if( err != paNoError ) {
 		HandleAudioError(err); 
@@ -308,21 +319,24 @@ void Cleanup()
 	effect->dispatcher (effect, effClose, 0, 0, 0, 0);
 
 	delete vstEvents;
+
+	delete pluginLoader;
 }
 
 bool LoadPlugin()
 {
 	const char* fileName = "C:\\Program Files\\VSTPlugins\\Circle.dll";
 
+	pluginLoader = new PluginLoader();
+
 	printf ("HOST> Load library...\n");
-	PluginLoader loader;
-	if (!loader.loadLibrary (fileName))
+	if (!pluginLoader->loadLibrary (fileName))
 	{
 		printf ("Failed to load VST Plugin library!\n");
 		return false;
 	}
 
-	PluginEntryProc mainEntry = loader.getMainEntry ();
+	PluginEntryProc mainEntry = pluginLoader->getMainEntry();
 	if (!mainEntry)
 	{
 		printf ("VST Plugin main entry not found!\n");
@@ -358,27 +372,15 @@ bool LoadPlugin()
 
 	checkEffectProperties (effect);
 
-	vstOutputBuffer = new float*[VST_MAX_OUTPUT_CHANNELS_SUPPORTED];
-	for (int i=0; i<VST_MAX_OUTPUT_CHANNELS_SUPPORTED; i++) {
-		vstOutputBuffer[i] = new float[AUDIO_FRAMES_PER_BUFFER];
-	}
-	
-	if (!StartAudio()) {
-		cout << "Failed to start audio" << endl;
-		Cleanup(); 
-		return false;
-	}
+	//checkEffectEditor (effect);
 
-	//checkEffectProcessing (effect);
-	checkEffectEditor (effect);
-
-	Cleanup();
+	//Cleanup();
 
 	return true;
 }
 
 //-------------------------------------------------------------------------------------------------------
-int main (int argc, char* argv[])
+/*int main (int argc, char* argv[])
 {
 	if (!checkPlatform ())
 	{
@@ -397,7 +399,6 @@ int main (int argc, char* argv[])
 
 	cout << endl;
 
-	/*
 	// test song class
 	vector<Event> events;
 	vector<float> offsets;
@@ -416,13 +417,13 @@ int main (int argc, char* argv[])
 		offsets.clear();
 	}
 	Sleep(60 * 1000);
-	*/
+	
 	
 	LoadPlugin();
 	
 
 	return 0;
-}
+}*/
 
 //-------------------------------------------------------------------------------------------------------
 void checkEffectProperties (AEffect* effect)
@@ -529,3 +530,5 @@ VstIntPtr VSTCALLBACK HostCallback (AEffect* effect, VstInt32 opcode, VstInt32 i
 
 	return result;
 }
+
+#endif

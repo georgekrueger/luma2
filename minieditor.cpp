@@ -21,6 +21,9 @@ static pascal void idleTimerProc (EventLoopTimerRef inTimer, void* inUserData);
 #endif
 
 #include <stdio.h>
+#include <iostream>
+
+using namespace std;
 
 #if _WIN32
 //-------------------------------------------------------------------------------------------------------
@@ -54,7 +57,7 @@ bool checkEffectEditor (AEffect* effect)
 	t.cx = 100;
 	t.cy = 100;
 	DialogBoxIndirectParam (GetModuleHandle (0), &t, 0, (DLGPROC)EditorProc, (LPARAM)effect);
-
+	
 	theEffect = 0;
 #elif TARGET_API_MAC_CARBON
 	WindowRef window;
