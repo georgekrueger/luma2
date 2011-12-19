@@ -99,6 +99,15 @@ int WINAPI WinMain(HINSTANCE hInstance,
         nCmdShow);
     UpdateWindow(hWnd);
 
+	// parse input file
+	init_table();
+	is.open("C:\\Documents and Settings\\George\\My Documents\\luma2\\input.txt", ifstream::in);
+	int ret = yyparse();
+	is.close();
+
+	// start the audio after everything has been initialized
+	StartAudio();
+
     // Main message loop:
     MSG msg;
     while (GetMessage(&msg, NULL, 0, 0))

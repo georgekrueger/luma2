@@ -99,6 +99,8 @@ void PlayNoteOff(AEffect* effect, float offset, short pitch)
 vector<Event> songEvents;
 vector<float> songOffsets;
 
+int wait = 1000;
+
 /* This routine will be called by the PortAudio engine when audio is needed.
 ** It may called at interrupt level on some machines so don't do anything
 ** that could mess up the system like calling malloc() or free().
@@ -112,6 +114,11 @@ static int portaudioCallback( const void *inputBuffer, void *outputBuffer,
     (void) inputBuffer; /* Prevent "unused variable" warnings. */
 
 	float timeElapsedInMs = framesPerBuffer / AUDIO_SAMPLE_RATE * 1000;
+
+	wait -= timeElapsedInMs;
+	if (wait > 0) {
+		return 0;
+	}
 
 	song.Update(timeElapsedInMs, songEvents, songOffsets);
 	for (int j=0; j<songEvents.size(); j++) {
