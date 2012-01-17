@@ -20,6 +20,7 @@ HINSTANCE hInst;
 // Forward declarations of functions included in this code module:
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
+
 int WINAPI WinMain(HINSTANCE hInstance,
                    HINSTANCE hPrevInstance,
                    LPSTR lpCmdLine,
@@ -95,8 +96,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
     // The parameters to ShowWindow explained:
     // hWnd: the value returned from CreateWindow
     // nCmdShow: the fourth parameter from WinMain
-    ShowWindow(hWnd,
-        nCmdShow);
+    ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
 
 	// parse input file
@@ -107,6 +107,18 @@ int WINAPI WinMain(HINSTANCE hInstance,
 
 	// start the audio after everything has been initialized
 	StartAudio();
+
+	/*for (int i=0; i<100; i++)
+	{
+		songEvents.clear();
+		songOffsets.clear();
+		song.Update(512, songEvents, songOffsets);
+		cout << endl << "Events: " << songEvents.size() << endl;
+		for (int j=0; j<songEvents.size(); j++) {
+			cout << "offset: " << songOffsets[j] << endl;
+			songEvents[j].Print();
+		}
+	}*/
 
     // Main message loop:
     MSG msg;

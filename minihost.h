@@ -26,6 +26,8 @@
 #include <iostream>
 #include "lumagrammar.h"
 #include "music.h"
+#include <vector>
+#include <string>
 
 extern Song song;
 struct PluginLoader;
@@ -43,63 +45,61 @@ VstEvents* vstEvents = NULL;
 bool audioStarted = false;
 PluginLoader* pluginLoader = NULL;
 
+VstMidiEvent globalEvent;
+
 static const unsigned int VST_MAX_OUTPUT_CHANNELS_SUPPORTED = 2;
 static float** vstOutputBuffer = NULL;
 
 void PlayNoteOn(AEffect* effect, float offset, short pitch, short velocity, short length)
 {
-	VstMidiEvent e;
-	e.type = kVstMidiType;
-	e.byteSize = sizeof(VstMidiEvent);
-	e.deltaFrames = 0;	///< sample frames related to the current block start sample position
-	e.flags = 0;			///< @see VstMidiEventFlags
-	e.noteLength = length;	///< (in sample frames) of entire note, if available, else 0
-	e.noteOffset = offset;	///< offset (in sample frames) into note from note start if available, else 0
-	e.midiData[0] = (char)0x90;
-	e.midiData[1] = (char)pitch;
-	e.midiData[2] = (char)velocity;
-	e.detune = 0;			///< -64 to +63 cents; for scales other than 'well-tempered' ('microtuning')
-	e.noteOffVelocity = 0;	///< Note Off Velocity [0, 127]
+	globalEvent.type = kVstMidiType;
+	globalEvent.byteSize = sizeof(VstMidiEvent);
+	globalEvent.deltaFrames = offset;	///< sample frames related to the current block start sample position
+	globalEvent.flags = 0;			///< @see VstMidiEventFlags
+	globalEvent.noteLength = length;	///< (in sample frames) of entire note, if available, else 0
+	globalEvent.noteOffset = 0;	///< offset (in sample frames) into note from note start if available, else 0
+	globalEvent.midiData[0] = (char)0x90;
+	globalEvent.midiData[1] = (char)pitch;
+	globalEvent.midiData[2] = (char)velocity;
+	globalEvent.detune = 0;			///< -64 to +63 cents; for scales other than 'well-tempered' ('microtuning')
+	globalEvent.noteOffVelocity = 0;	///< Note Off Velocity [0, 127]
 	
 	vstEvents->numEvents = 1;
-	vstEvents->events[0] = (VstEvent*)&e;
+	vstEvents->events[0] = (VstEvent*)&globalEvent;
 	
 	effect->dispatcher( effect, effProcessEvents, 0, 0, vstEvents, 0);
 
-	vstEvents->numEvents = 0;
+	//vstEvents->numEvents = 0;
 
 	//printf("play note on\n");
 }
 
 void PlayNoteOff(AEffect* effect, float offset, short pitch)
 {
-	VstMidiEvent e;
-	e.type = kVstMidiType;
-	e.byteSize = sizeof(VstMidiEvent);
-	e.deltaFrames = 0;	///< sample frames related to the current block start sample position
-	e.flags = 0;			///< @see VstMidiEventFlags
-	e.noteLength = 0;	///< (in sample frames) of entire note, if available, else 0
-	e.noteOffset = offset;	///< offset (in sample frames) into note from note start if available, else 0
-	e.midiData[0] = (char)0x80;
-	e.midiData[1] = (char)pitch;
-	e.midiData[2] = (char)0;
-	e.detune = 0;			///< -64 to +63 cents; for scales other than 'well-tempered' ('microtuning')
-	e.noteOffVelocity = 0;	///< Note Off Velocity [0, 127]
+	globalEvent.type = kVstMidiType;
+	globalEvent.byteSize = sizeof(VstMidiEvent);
+	globalEvent.deltaFrames = offset;	///< sample frames related to the current block start sample position
+	globalEvent.flags = 0;			///< @see VstMidiEventFlags
+	globalEvent.noteLength = 0;	///< (in sample frames) of entire note, if available, else 0
+	globalEvent.noteOffset = 0;	///< offset (in sample frames) into note from note start if available, else 0
+	globalEvent.midiData[0] = (char)0x80;
+	globalEvent.midiData[1] = (char)pitch;
+	globalEvent.midiData[2] = (char)0;
+	globalEvent.detune = 0;			///< -64 to +63 cents; for scales other than 'well-tempered' ('microtuning')
+	globalEvent.noteOffVelocity = 0;	///< Note Off Velocity [0, 127]
 	
 	vstEvents->numEvents = 1;
-	vstEvents->events[0] = (VstEvent*)&e;
+	vstEvents->events[0] = (VstEvent*)&globalEvent;
 	
 	effect->dispatcher( effect, effProcessEvents, 0, 0, vstEvents, 0);
 
-	vstEvents->numEvents = 0;
+	//vstEvents->numEvents = 0;
 
 	//printf("play note off\n");
 }
 
 vector<Event> songEvents;
 vector<float> songOffsets;
-
-int wait = 1000;
 
 /* This routine will be called by the PortAudio engine when audio is needed.
 ** It may called at interrupt level on some machines so don't do anything
@@ -115,37 +115,39 @@ static int portaudioCallback( const void *inputBuffer, void *outputBuffer,
 
 	float timeElapsedInMs = framesPerBuffer / AUDIO_SAMPLE_RATE * 1000;
 
-	wait -= timeElapsedInMs;
-	if (wait > 0) {
-		return 0;
-	}
-
-	song.Update(timeElapsedInMs, songEvents, songOffsets);
-	for (int j=0; j<songEvents.size(); j++) {
-		Event* e = &songEvents[j];
-		float offset = songOffsets[j];
-		Note* note = e->note;
-		if (note->IsNoteOff()) {
-			PlayNoteOff(effect, offset, note->GetPitch());
-		}
-		else {
-			cout << "Note on" << endl;
-			PlayNoteOn(effect, offset, note->GetPitch(), note->GetVelocity(), note->GetLengthInMs());
-		}
-	}
-	songEvents.clear();
-	songOffsets.clear();
-
 	VstInt32 numOutputs = effect->numOutputs;
 	
 	float** vstOut = (float**)vstOutputBuffer;
-	effect->processReplacing (effect, NULL, vstOut, AUDIO_FRAMES_PER_BUFFER);
+	effect->processReplacing (effect, NULL, vstOut, framesPerBuffer);
 
 	float *out = (float*)outputBuffer;
 	for (unsigned long i=0; i<framesPerBuffer; i++) {
 		*out++ = vstOutputBuffer[0][i];
 		*out++ = vstOutputBuffer[1][i];
 	}
+
+	// Process events
+	song.Update(timeElapsedInMs, songEvents, songOffsets);
+	for (int j=0; j<songEvents.size(); j++) {
+		Event* e = &songEvents[j];
+		float offset = songOffsets[j];
+		Note* note = e->note;
+		int offsetInSamples = offset / 1000 * AUDIO_SAMPLE_RATE;
+		if (note->IsNoteOff()) {
+			cout << "Note off " << offset << " " << offsetInSamples << endl;
+			PlayNoteOff(effect, offsetInSamples, note->GetPitch());
+		}
+		else {
+			cout << "Note on " << offset << " " << offsetInSamples << endl;
+			note->Print();
+			cout << endl;
+			int noteLengthInSamples = note->GetLengthInMs() / 1000 * AUDIO_SAMPLE_RATE;
+			PlayNoteOn(effect, offsetInSamples, note->GetPitch(), note->GetVelocity(), noteLengthInSamples);
+		}
+	}
+	songEvents.clear();
+	songOffsets.clear();
+	// End process events
 	
     return 0;
 }
@@ -326,7 +328,6 @@ void Cleanup()
 	effect->dispatcher (effect, effClose, 0, 0, 0, 0);
 
 	delete vstEvents;
-
 	delete pluginLoader;
 }
 

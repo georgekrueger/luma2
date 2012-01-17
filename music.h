@@ -7,7 +7,7 @@
 #include <map>
 using namespace std;
 
-float BPM = 120;
+float BPM = 200;
 
 ///////////////////////////
 // Scales
