@@ -215,81 +215,98 @@ public:
 		for (int i=0; i<numPatterns; i++) {
 			SongPattern* sp = &patterns_[i];
 			float timeUsed = 0;
-			while (timeUsed < elapsedTime && sp->pattern_->GetRepeatCount() > 0) {
-				if (sp->pos_ >= sp->pattern_->GetNumEvents()) {
-					sp->pattern_->SetRepeatCount(sp->pattern_->GetRepeatCount() - 1);
-					sp->pos_ = 0;
-					continue;
-				}
+			while (timeUsed < elapsedTime) {
 
 				float timeUsedThisIteration = 0;
 
-				// if there is left over time from an already encountered rest,
-				// then consume it.
-				if (sp->leftover_ > 0) 
+				if (sp->pattern_->GetRepeatCount() > 0)
 				{
-					if (timeUsed + sp->leftover_ > elapsedTime) {
-						unsigned long timeLeftInFrame = elapsedTime - timeUsed;
-						sp->leftover_ -= timeLeftInFrame;
-						timeUsed = elapsedTime;
-						timeUsedThisIteration = timeLeftInFrame;
+					if (sp->pos_ >= sp->pattern_->GetNumEvents()) {
+						sp->pattern_->SetRepeatCount(sp->pattern_->GetRepeatCount() - 1);
+						sp->pos_ = 0;
+						continue;
 					}
-					else {
-						timeUsed += sp->leftover_;
-						timeUsedThisIteration = sp->leftover_;
-						sp->leftover_ = 0;
-						sp->pos_++;
-					}
-				}
-				else
-				{
-					Event* e = sp->pattern_->GetEvent(sp->pos_);
-					switch(e->type) 
+
+					// if there is left over time from an already encountered rest,
+					// then consume it.
+					if (sp->leftover_ > 0) 
 					{
-						case Event::NOTE:
+						if (timeUsed + sp->leftover_ > elapsedTime) {
+							unsigned long timeLeftInFrame = elapsedTime - timeUsed;
+							sp->leftover_ -= timeLeftInFrame;
+							timeUsed = elapsedTime;
+							timeUsedThisIteration = timeLeftInFrame;
+						}
+						else {
+							timeUsed += sp->leftover_;
+							timeUsedThisIteration = sp->leftover_;
+							sp->leftover_ = 0;
+							sp->pos_++;
+						}
+					}
+					else
+					{
+						Event* e = sp->pattern_->GetEvent(sp->pos_);
+						switch(e->type) 
 						{
-							Note* note = e->note;
-							if (e->note->IsRest())
+							case Event::NOTE:
 							{
-								// rest event
-								float noteLength = note->GetLengthInMs();
-								if (timeUsed + noteLength > elapsedTime) {
-									unsigned long timeLeftInFrame = elapsedTime - timeUsed;
-									sp->leftover_ = noteLength - timeLeftInFrame;
-									timeUsed = elapsedTime;
-									timeUsedThisIteration = timeLeftInFrame;
+								Note* note = e->note;
+								if (e->note->IsRest())
+								{
+									// rest event
+									float noteLength = note->GetLengthInMs();
+									if (timeUsed + noteLength > elapsedTime) {
+										unsigned long timeLeftInFrame = elapsedTime - timeUsed;
+										sp->leftover_ = noteLength - timeLeftInFrame;
+										timeUsed = elapsedTime;
+										timeUsedThisIteration = timeLeftInFrame;
+									}
+									else {
+										timeUsed += noteLength;
+										timeUsedThisIteration = noteLength;
+										sp->pos_++;
+									}
 								}
 								else {
-									timeUsed += noteLength;
-									timeUsedThisIteration = noteLength;
+									// note on event
+									map<short, ActiveNote>::iterator activeNoteIter = activeNotes_.find(note->GetPitch());
+									// search for an active note at this pitch
+									if (activeNoteIter != activeNotes_.end()) {
+										// add note off event to event list
+										Event noteOffEvent;
+										noteOffEvent.type = Event::NOTE;
+										noteOffEvent.note = new Note(*activeNoteIter->second.note);
+										noteOffEvent.note->SetNoteOff();
+										events.push_back(noteOffEvent);
+										offsets.push_back(timeUsed-1); // make sure the note off event is before the note on for the same pitch
+
+										// active note at this pitch already exists, so replace 
+										// that active note with this one
+										ActiveNote& activeNote = activeNoteIter->second;
+										activeNote.note = note;
+										activeNote.timeLeft = note->GetLengthInMs();
+									}
+									else {
+										// create a new entry in the active note list
+										ActiveNote active;
+										active.note = note;
+										active.timeLeft = note->GetLengthInMs();
+										activeNotes_[note->GetPitch()] = active;
+									}
+									events.push_back(*e);
+									offsets.push_back(timeUsed);
 									sp->pos_++;
 								}
 							}
-							else {
-								// note on event
-								map<short, ActiveNote>::iterator activeNoteIter = activeNotes_.find(note->GetPitch());
-								// search for an active note at this pitch
-								if (activeNoteIter != activeNotes_.end()) {
-									// generate note off event
-									Event noteOffEvent;
-									noteOffEvent.type = Event::NOTE;
-									noteOffEvent.note = new Note(*activeNoteIter->second.note);
-									noteOffEvent.note->SetNoteOff();
-									events.push_back(noteOffEvent);
-									offsets.push_back(timeUsed);
-								}
-								ActiveNote active;
-								active.note = note;
-								active.timeLeft = note->GetLengthInMs();
-								activeNotes_[note->GetPitch()] = active;
-								events.push_back(*e);
-								offsets.push_back(timeUsed);
-								sp->pos_++;
-							}
+							default:
+								break;
 						}
-						default:
-							break;
 					}
+				}
+				else {
+					timeUsed = elapsedTime;
+					timeUsedThisIteration = elapsedTime;
 				}
 
 				// update active notes
